@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { authApi, profileApi } from '@/lib/api';
+import { authApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
 interface LoginForm {

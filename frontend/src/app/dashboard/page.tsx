@@ -5,15 +5,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { profileApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import Navbar from '@/components/layout/Navbar';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { isAuthenticated, logout } = useAuthStore();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Wait for auth initialization (token in localStorage)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!isAuthenticated && !token) {
       router.push('/auth/login');
       return;
     }
@@ -33,17 +36,12 @@ export default function DashboardPage() {
     fetchProfile();
   }, [isAuthenticated, router, logout]);
 
-  const handleLogout = async () => {
-    logout();
-    router.push('/auth/login');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl mb-4">💕</div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="text-4xl mb-4 animate-pulse">💕</div>
+          <p className="text-gray-600">Loading your profile...</p>
         </div>
       </div>
     );
@@ -53,34 +51,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="text-xl">💕</span>
-              <span className="text-lg font-bold text-primary-600">Dating02</span>
-            </Link>
-            <div className="flex items-center space-x-4">
-              <Link href="/search" className="text-gray-600 hover:text-primary-500">
-                🔍 Discover
-              </Link>
-              <Link href="/chat" className="text-gray-600 hover:text-primary-500">
-                💬 Chat
-              </Link>
-              <Link href="/booking" className="text-gray-600 hover:text-primary-500">
-                📅 Bookings
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="text-gray-600 hover:text-red-500 text-sm"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
@@ -93,14 +64,14 @@ export default function DashboardPage() {
 
         {/* Profile Completion */}
         {profileCompletion < 100 && (
-          <div className="card mb-6 bg-gradient-to-r from-pink-50 to-purple-50 border-primary-200">
+          <div className="card mb-6 bg-gradient-to-r from-pink-50 to-purple-50 border border-primary-200">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900">Complete Your Profile</h3>
               <span className="text-primary-600 font-bold">{profileCompletion}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
               <div
-                className="bg-primary-500 h-2 rounded-full transition-all"
+                className="bg-primary-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${profileCompletion}%` }}
               />
             </div>
@@ -128,20 +99,20 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link href="/search" className="card hover:shadow-md transition-shadow cursor-pointer">
-            <div className="text-3xl mb-3">🔍</div>
+          <Link href="/search" className="card hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">🔍</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Discover People</h3>
             <p className="text-gray-600 text-sm">Browse profiles and find your match</p>
           </Link>
 
-          <Link href="/companion" className="card hover:shadow-md transition-shadow cursor-pointer">
-            <div className="text-3xl mb-3">✨</div>
+          <Link href="/companion" className="card hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">✨</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Find Companions</h3>
             <p className="text-gray-600 text-sm">Book verified companions for events</p>
           </Link>
 
-          <Link href="/chat" className="card hover:shadow-md transition-shadow cursor-pointer">
-            <div className="text-3xl mb-3">💬</div>
+          <Link href="/chat" className="card hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">💬</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Messages</h3>
             <p className="text-gray-600 text-sm">Chat with your connections</p>
           </Link>

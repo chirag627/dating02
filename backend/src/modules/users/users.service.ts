@@ -1,14 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
+
+function toObjectId(id: string): Types.ObjectId {
+  if (!Types.ObjectId.isValid(id)) throw new BadRequestException('Invalid ID format');
+  return new Types.ObjectId(id);
+}
 
 @Injectable()
 export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   async findById(id: string): Promise<UserDocument> {
-    const user = await this.userModel.findById(id);
+    const user = await this.userModel.findById(toObjectId(id));
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
@@ -24,7 +29,7 @@ export class UsersService {
   }
 
   async findByRefreshToken(userId: string): Promise<UserDocument> {
-    return this.userModel.findById(userId).select('+refreshToken');
+    return this.userModel.findById(toObjectId(userId)).select('+refreshToken');
   }
 
   async create(data: Partial<User>): Promise<UserDocument> {
@@ -33,7 +38,7 @@ export class UsersService {
   }
 
   async update(id: string, data: Partial<User>): Promise<UserDocument> {
-    return this.userModel.findByIdAndUpdate(id, data, { new: true });
+    return this.userModel.findByIdAndUpdate(toObjectId(id), data, { new: true });
   }
 
   async findAll(query: any = {}): Promise<UserDocument[]> {
@@ -42,7 +47,7 @@ export class UsersService {
 
   async ban(id: string, reason: string): Promise<UserDocument> {
     return this.userModel.findByIdAndUpdate(
-      id,
+      toObjectId(id),
       { isBlocked: true, banReason: reason },
       { new: true },
     );
@@ -50,7 +55,7 @@ export class UsersService {
 
   async unban(id: string): Promise<UserDocument> {
     return this.userModel.findByIdAndUpdate(
-      id,
+      toObjectId(id),
       { isBlocked: false, banReason: null },
       { new: true },
     );

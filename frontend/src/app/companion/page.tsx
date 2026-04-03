@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { companionApi } from '@/lib/api';
+import Navbar from '@/components/layout/Navbar';
 
 export default function CompanionPage() {
   const [companions, setCompanions] = useState<any[]>([]);
@@ -25,20 +26,14 @@ export default function CompanionPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <span>💕</span>
-            <span className="font-bold text-primary-600">Dating02</span>
-          </Link>
-          <h1 className="text-lg font-semibold text-gray-900">Find Companions</h1>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Find Companions</h1>
+
         {loading ? (
           <div className="text-center py-20">
-            <div className="text-4xl mb-4">✨</div>
+            <div className="text-4xl mb-4 animate-pulse">✨</div>
             <p className="text-gray-600">Loading companions...</p>
           </div>
         ) : companions.length === 0 ? (
@@ -55,7 +50,7 @@ export default function CompanionPage() {
                 className="card hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-pink-200 to-purple-200 rounded-full flex items-center justify-center text-2xl">
+                  <div className="w-16 h-16 bg-gradient-to-br from-pink-200 to-purple-200 rounded-full flex items-center justify-center text-2xl overflow-hidden">
                     {companion.userId?.photos?.[0] ? (
                       <img
                         src={companion.userId.photos[0]}

@@ -123,3 +123,17 @@ export const adminApi = {
   approveCompanion: (userId: string) =>
     api.patch(`/admin/companion/approve/${userId}`),
 };
+
+// Review API
+export const reviewApi = {
+  create: (data: { bookingId: string; rating: number; review: string }) =>
+    api.post('/review', data),
+  getCompanionReviews: (companionId: string) =>
+    api.get(`/review/companion/${companionId}`),
+};
+
+// Notification API
+export const notificationApi = {
+  getAll: () => api.get('/notification'),
+  markRead: (id: string) => api.patch(`/notification/${id}/read`),
+};

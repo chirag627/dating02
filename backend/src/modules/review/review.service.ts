@@ -49,10 +49,9 @@ export class ReviewService {
 
     await review.save();
 
-    // Mark booking as reviewed
-    const bookingDoc = await this.bookingService.findById(dto.bookingId);
-    bookingDoc.isReviewed = true;
-    await bookingDoc.save();
+    // Mark booking as reviewed using the already-fetched document
+    booking.isReviewed = true;
+    await booking.save();
 
     // Update companion rating
     await this.companionService.updateRating(companion._id.toString(), dto.rating);

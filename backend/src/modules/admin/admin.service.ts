@@ -31,7 +31,7 @@ export class AdminService {
   }
 
   async getBookings() {
-    return this.bookingService.getHistory('admin', 'ADMIN');
+    return this.bookingService.getHistory('', 'ADMIN');
   }
 
   async approveCompanion(userId: string) {

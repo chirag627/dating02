@@ -88,24 +88,28 @@ export class BookingService {
   }
 
   async getHistory(userId: string, role: string): Promise<BookingDocument[]> {
-    const query =
-      role === 'COMPANION'
-        ? async () => {
-            const companion = await this.companionService.findByUserId(userId);
-            return companion
-              ? this.bookingModel
-                  .find({ companionId: companion._id })
-                  .populate('clientId', 'firstName lastName photos')
-                  .sort({ createdAt: -1 })
-              : [];
-          }
-        : () =>
-            this.bookingModel
-              .find({ clientId: userId })
-              .populate('companionId')
-              .sort({ createdAt: -1 });
+    if (role === 'ADMIN') {
+      return this.bookingModel
+        .find()
+        .populate('clientId', 'firstName lastName photos')
+        .populate('companionId')
+        .sort({ createdAt: -1 });
+    }
 
-    return query();
+    if (role === 'COMPANION') {
+      const companion = await this.companionService.findByUserId(userId);
+      return companion
+        ? this.bookingModel
+            .find({ companionId: companion._id })
+            .populate('clientId', 'firstName lastName photos')
+            .sort({ createdAt: -1 })
+        : [];
+    }
+
+    return this.bookingModel
+      .find({ clientId: userId })
+      .populate('companionId')
+      .sort({ createdAt: -1 });
   }
 
   async findById(id: string): Promise<BookingDocument> {

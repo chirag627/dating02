@@ -19,20 +19,22 @@ export class ProfileService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserDocument> {
-    const updateData: any = { ...dto };
+    const { location, dateOfBirth, ...rest } = dto;
+    const updateData: any = { ...rest };
 
-    if (dto.location) {
+    if (location) {
       updateData.location = {
         type: 'Point',
-        coordinates: [dto.location.lng, dto.location.lat],
+        coordinates: [location.lng, location.lat],
       };
     }
 
-    if (dto.dateOfBirth) {
-      const dob = new Date(dto.dateOfBirth);
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
       const ageDiff = Date.now() - dob.getTime();
       const ageDate = new Date(ageDiff);
       updateData.age = Math.abs(ageDate.getUTCFullYear() - 1970);
+      updateData.dateOfBirth = dob;
     }
 
     const user = await this.userModel.findByIdAndUpdate(userId, updateData, { new: true });

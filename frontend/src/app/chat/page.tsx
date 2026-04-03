@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
 import { chatApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { io, Socket } from 'socket.io-client';
+import Navbar from '@/components/layout/Navbar';
 
 export default function ChatPage() {
   const { user } = useAuthStore();
@@ -13,7 +13,9 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const fetchConversations = async () => {
@@ -26,8 +28,7 @@ export default function ChatPage() {
     };
     fetchConversations();
 
-    // Setup socket
-    const token = localStorage.getItem('accessToken');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
     const newSocket = io(`${socketUrl}/chat`, {
       auth: { token },
@@ -35,6 +36,10 @@ export default function ChatPage() {
 
     newSocket.on('receive_message', (message) => {
       setMessages((prev) => [...prev, message]);
+    });
+
+    newSocket.on('typing', ({ isTyping: typing }: { userId: string; isTyping: boolean }) => {
+      setIsTyping(typing);
     });
 
     setSocket(newSocket);
@@ -50,11 +55,25 @@ export default function ChatPage() {
 
   const selectConversation = async (conv: any) => {
     setSelectedConversation(conv);
+    setMessages([]);
     try {
       const response = await chatApi.getConversation(conv._id) as any;
-      setMessages((response.data || []).reverse());
+      setMessages(([...(response.data || [])]).reverse());
+      // Mark messages as read
+      socket?.emit('read', { senderId: conv._id });
     } catch (err) {
       console.error('Failed to load messages:', err);
+    }
+  };
+
+  const handleTyping = (value: string) => {
+    setNewMessage(value);
+    if (selectedConversation && socket) {
+      socket.emit('typing', { receiverId: selectedConversation._id, isTyping: true });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('typing', { receiverId: selectedConversation._id, isTyping: false });
+      }, 1500);
     }
   };
 
@@ -71,42 +90,39 @@ export default function ChatPage() {
       {
         senderId: { _id: user?._id },
         content: newMessage,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
       },
     ]);
     setNewMessage('');
+    // Stop typing indicator
+    socket.emit('typing', { receiverId: selectedConversation._id, isTyping: false });
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <span>💕</span>
-            <span className="font-bold text-primary-600">Dating02</span>
-          </Link>
-          <h1 className="text-lg font-semibold text-gray-900">Messages</h1>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 py-4 flex gap-4" style={{ height: 'calc(100vh - 64px)' }}>
         {/* Conversations List */}
-        <div className="w-80 bg-white rounded-xl shadow-sm border border-gray-100 overflow-y-auto">
+        <div className="w-72 bg-white rounded-xl shadow-sm border border-gray-100 overflow-y-auto flex-shrink-0">
           <div className="p-4 border-b">
-            <h2 className="font-semibold text-gray-900">Conversations</h2>
+            <h2 className="font-semibold text-gray-900">💬 Conversations</h2>
           </div>
           {conversations.length === 0 ? (
-            <div className="p-4 text-center text-gray-500 text-sm">No conversations yet</div>
+            <div className="p-6 text-center">
+              <div className="text-4xl mb-3">💭</div>
+              <p className="text-gray-500 text-sm">No conversations yet</p>
+            </div>
           ) : (
             conversations.map((conv) => (
               <button
                 key={conv._id}
                 onClick={() => selectConversation(conv.user || conv)}
-                className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-50 text-left ${
-                  selectedConversation?._id === conv._id ? 'bg-primary-50' : ''
+                className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-50 text-left border-b border-gray-50 transition-colors ${
+                  selectedConversation?._id === (conv.user?._id || conv._id) ? 'bg-primary-50' : ''
                 }`}
               >
-                <div className="w-10 h-10 bg-gradient-to-br from-pink-200 to-purple-200 rounded-full flex items-center justify-center text-xl">
+                <div className="w-10 h-10 bg-gradient-to-br from-pink-200 to-purple-200 rounded-full flex items-center justify-center text-xl overflow-hidden flex-shrink-0">
                   {conv.user?.photos?.[0] ? (
                     <img
                       src={conv.user.photos[0]}
@@ -118,44 +134,58 @@ export default function ChatPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate">
+                  <p className="font-medium text-gray-900 truncate text-sm">
                     {conv.user?.firstName} {conv.user?.lastName}
                   </p>
                   <p className="text-gray-500 text-xs truncate">
-                    {conv.lastMessage?.content}
+                    {conv.lastMessage?.content || 'Start chatting'}
                   </p>
                 </div>
+                {conv.unreadCount > 0 && (
+                  <span className="bg-primary-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                    {conv.unreadCount}
+                  </span>
+                )}
               </button>
             ))
           )}
         </div>
 
         {/* Chat Window */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col">
+        <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
           {selectedConversation ? (
             <>
-              <div className="p-4 border-b flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-pink-200 to-purple-200 rounded-full flex items-center justify-center">
-                  👤
+              <div className="p-4 border-b flex items-center space-x-3 bg-white">
+                <div className="w-10 h-10 bg-gradient-to-br from-pink-200 to-purple-200 rounded-full flex items-center justify-center overflow-hidden">
+                  {selectedConversation.photos?.[0] ? (
+                    <img src={selectedConversation.photos[0]} alt="avatar" className="w-full h-full object-cover" />
+                  ) : '👤'}
                 </div>
-                <h3 className="font-semibold text-gray-900">
-                  {selectedConversation.firstName} {selectedConversation.lastName}
-                </h3>
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm">
+                    {selectedConversation.firstName} {selectedConversation.lastName}
+                  </h3>
+                  {isTyping && <p className="text-xs text-primary-500">typing...</p>}
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.map((msg, idx) => {
-                  const isOwn = msg.senderId?._id === user?._id || msg.senderId === user?._id;
+                  const isOwn =
+                    msg.senderId?._id === user?._id || msg.senderId === user?._id;
                   return (
                     <div key={idx} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                       <div
-                        className={`max-w-xs px-4 py-2 rounded-2xl text-sm ${
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl text-sm ${
                           isOwn
-                            ? 'bg-primary-500 text-white'
-                            : 'bg-gray-100 text-gray-900'
+                            ? 'bg-primary-500 text-white rounded-br-none'
+                            : 'bg-gray-100 text-gray-900 rounded-bl-none'
                         }`}
                       >
-                        {msg.content}
+                        <p>{msg.content}</p>
+                        <p className={`text-xs mt-1 ${isOwn ? 'text-pink-200' : 'text-gray-400'}`}>
+                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
                     </div>
                   );
@@ -163,25 +193,30 @@ export default function ChatPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="p-4 border-t flex space-x-2">
+              <div className="p-4 border-t flex space-x-2 bg-white">
                 <input
                   type="text"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  onChange={(e) => handleTyping(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                   className="flex-1 input-field"
-                  placeholder="Type a message..."
+                  placeholder="Type a message... (Enter to send)"
                 />
-                <button onClick={sendMessage} className="btn-primary px-6">
-                  Send
+                <button
+                  onClick={sendMessage}
+                  disabled={!newMessage.trim()}
+                  className="btn-primary px-5 disabled:opacity-50"
+                >
+                  ➤
                 </button>
               </div>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-500">
               <div className="text-center">
-                <div className="text-5xl mb-4">💬</div>
-                <p>Select a conversation to start chatting</p>
+                <div className="text-6xl mb-4">💬</div>
+                <p className="font-medium text-gray-700">Select a conversation</p>
+                <p className="text-sm text-gray-400 mt-1">to start chatting</p>
               </div>
             </div>
           )}

@@ -87,7 +87,10 @@ export class AuthService {
 
   async forgotPassword(dto: ForgotPasswordDto) {
     const user = await this.usersService.findByEmailWithTokens(dto.email);
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) {
+      // Return same message to prevent user enumeration
+      return { message: 'If that email exists, a password reset link has been sent.' };
+    }
 
     const resetToken = uuidv4();
     const expires = new Date(Date.now() + 3600000); // 1 hour
@@ -97,8 +100,8 @@ export class AuthService {
       resetPasswordExpires: expires,
     });
 
-    // In production, send email via Nodemailer
-    return { message: 'Password reset token sent', resetToken };
+    // In production this would use Nodemailer; token returned for dev/test convenience
+    return { message: 'If that email exists, a password reset link has been sent.', resetToken };
   }
 
   async resetPassword(dto: ResetPasswordDto) {

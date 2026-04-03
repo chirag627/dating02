@@ -4,7 +4,6 @@ import {
   Body,
   Get,
   UseGuards,
-  Request,
   Query,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -26,7 +25,11 @@ import { CurrentUser } from '../../common/utils/current-user.decorator';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
@@ -42,12 +45,16 @@ export class AuthController {
 
   @Post('refresh')
   @ApiOperation({ summary: 'Refresh access token' })
-  refresh(@Body() dto: RefreshTokenDto, @Request() req) {
-    // In a real scenario, decode the token to get userId
-    const decoded = JSON.parse(
-      Buffer.from(dto.refreshToken.split('.')[1], 'base64').toString(),
-    );
-    return this.authService.refreshTokens(decoded.sub, dto.refreshToken);
+  refresh(@Body() dto: RefreshTokenDto) {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(dto.refreshToken, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET', 'refresh_secret'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+    return this.authService.refreshTokens(payload.sub, dto.refreshToken);
   }
 
   @Post('forgot-password')

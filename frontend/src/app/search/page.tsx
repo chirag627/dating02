@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { searchApi } from '@/lib/api';
+import Navbar from '@/components/layout/Navbar';
 
 export default function SearchPage() {
   const [users, setUsers] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
     gender: '',
@@ -25,6 +26,7 @@ export default function SearchPage() {
 
       const response = await searchApi.users(params) as any;
       setUsers(response.data?.users || []);
+      setTotal(response.data?.total || 0);
     } catch (err) {
       console.error('Search failed:', err);
     } finally {
@@ -39,20 +41,17 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <span>💕</span>
-            <span className="font-bold text-primary-600">Dating02</span>
-          </Link>
-          <h1 className="text-lg font-semibold text-gray-900">Discover</h1>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Discover People</h1>
+          {total > 0 && <span className="text-gray-500 text-sm">{total} people found</span>}
+        </div>
+
         {/* Filters */}
         <div className="card mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Filter</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
@@ -99,14 +98,14 @@ export default function SearchPage() {
             </div>
           </div>
           <button onClick={handleSearch} className="mt-4 btn-primary">
-            Search
+            🔍 Search
           </button>
         </div>
 
         {/* Results */}
         {loading ? (
           <div className="text-center py-20">
-            <div className="text-4xl mb-4">🔍</div>
+            <div className="text-4xl mb-4 animate-spin">🔍</div>
             <p className="text-gray-600">Searching...</p>
           </div>
         ) : (
@@ -127,7 +126,7 @@ export default function SearchPage() {
                 <h3 className="font-semibold text-gray-900">
                   {user.firstName} {user.lastName?.charAt(0)}.
                 </h3>
-                {user.age && <p className="text-gray-500 text-sm">{user.age} years</p>}
+                {user.age && <p className="text-gray-500 text-sm">{user.age} yrs</p>}
                 {user.bio && (
                   <p className="text-gray-600 text-xs mt-1 line-clamp-2">{user.bio}</p>
                 )}
